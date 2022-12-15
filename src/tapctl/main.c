@@ -117,7 +117,36 @@ static const TCHAR usage_message_delete[] =
     TEXT("\n")
     TEXT("tapctl delete <adapter GUID | adapter name>\n")
 ;
+#undef _ftprintf
+#define _ftprintf openvpn_ftprintf
+int openvpn_ftprintf (FILE *fp, const TCHAR *fmt, ...)
+{
+    int len;
+    char *buf;
+    wchar_t *wbuf;
+    TCHAR *tbuf;
+    va_list ap;
 
+    va_start(ap, fmt);
+    len = _vsntprintf(NULL, 0, fmt, ap);
+    tbuf = alloca((len + 1) * sizeof(TCHAR));
+    len = _vsntprintf(tbuf, len + 1, fmt, ap);
+    va_end(ap);
+    tbuf[len] = TEXT('\0');
+#ifdef _UNICODE
+    wbuf = tbuf;
+#else
+    len = MultiByteToWideChar(CP_ACP, 0, tbuf, -1, NULL, 0);
+    wbuf = alloca(len * sizeof(wchar_t));
+    len = MultiByteToWideChar(CP_ACP, 0, tbuf, -1, wbuf, len);
+#endif
+    UINT consolecp = GetConsoleOutputCP();
+    len = WideCharToMultiByte(consolecp, 0, wbuf, -1, NULL, 0, NULL, NULL);
+    buf = alloca(len);
+    len = WideCharToMultiByte(consolecp, 0, wbuf, -1, buf, len, NULL, NULL);
+    fputs(buf, fp);
+    return len;
+}
 
 /**
  * Print the help message.

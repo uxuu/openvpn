@@ -127,7 +127,7 @@ GetOpenvpnSettings(settings_t *s)
     TCHAR priority[64];
     TCHAR append[2];
     DWORD error;
-    HKEY key;
+    HKEY key = NULL;
     TCHAR install_path[MAX_PATH];
     TCHAR default_value[MAX_PATH];
 

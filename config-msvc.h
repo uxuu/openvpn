@@ -179,3 +179,4 @@ typedef uint16_t in_port_t;
 #endif
 
 #define HAVE_CONFIG_VERSION_H 1
+#define alloca _alloca
