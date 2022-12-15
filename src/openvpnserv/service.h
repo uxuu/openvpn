@@ -74,6 +74,7 @@ typedef struct {
     TCHAR ovpn_admin_group[MAX_NAME];
     DWORD priority;
     BOOL append;
+    BOOL standalone;
 } settings_t;
 
 extern openvpn_service_t interactive_service;

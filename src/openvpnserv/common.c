@@ -57,6 +57,29 @@ openvpn_swprintf(LPTSTR str, size_t size, LPCTSTR format, ...)
     return res;
 }
 
+static TCHAR ini_path[MAX_PATH];
+static DWORD
+GetIniString(LPCTSTR section, LPCTSTR key, LPTSTR data, DWORD size, LPCTSTR default_value)
+{
+    DWORD len = GetPrivateProfileString(section, key, default_value, data, size, ini_path);
+    if(len == size-1)
+    {
+        return MsgToEventLog(M_SYSERR, TEXT("Error ini value: %s:%s, buffer full(%u:%u)"), section, key, size, len);
+    }
+    else if (len == size-2)
+    {
+        return MsgToEventLog(M_SYSERR, TEXT("Error ini value: %s:%s, section or key is NULL"), section, key);
+    }
+    return ERROR_SUCCESS;
+}
+
+static DWORD
+GetIniInt(LPCTSTR section, LPCTSTR key, DWORD default_value)
+{
+    return GetPrivateProfileInt(section, key, default_value, ini_path);
+}
+
+
 static DWORD
 GetRegString(HKEY key, LPCTSTR value, LPTSTR data, DWORD size, LPCTSTR default_value)
 {
@@ -92,6 +115,54 @@ GetOpenvpnSettings(settings_t *s)
     HKEY key;
     TCHAR install_path[MAX_PATH];
     TCHAR default_value[MAX_PATH];
+
+    GetModuleFileName(NULL, install_path, _countof(install_path));
+    *_tcsrchr(install_path, TEXT('\\')) = TEXT('\0');
+    openvpn_sntprintf(ini_path, _countof(ini_path), TEXT("%s\\openvpn-gui.ini"), install_path);
+
+    if((s->standalone = GetIniInt(TEXT("global"), TEXT("standalone"), 0)))
+    {
+        openvpn_sntprintf(s->exe_path, _countof(s->exe_path), TEXT("%s\\openvpn.exe"), install_path);
+
+        TCHAR *p = _tcsrchr(install_path, TEXT('\\'));
+        if(!_tcsnicmp(p, TEXT("\\bin"), 4))
+        {
+            *p = TEXT('\0');
+        }
+
+        openvpn_sntprintf(s->config_dir, _countof(s->config_dir), TEXT("%s\\config"), install_path);
+        openvpn_sntprintf(s->log_dir, _countof(s->log_dir), TEXT("%s\\log"), install_path);
+
+        error = GetIniString(TEXT("user"), TEXT("config_ext"), s->ext_string, _countof(s->ext_string),
+                             TEXT(".ovpn"));
+        if (error != ERROR_SUCCESS)
+        {
+            goto out;
+        }
+
+        error = GetIniString(TEXT("global"), TEXT("priority"), priority, _countof(priority),
+                             TEXT("NORMAL_PRIORITY_CLASS"));
+        if (error != ERROR_SUCCESS)
+        {
+            goto out;
+        }
+
+        error = GetIniString(TEXT("user"), TEXT("log_append"), append, sizeof(append), TEXT("0"));
+        if (error != ERROR_SUCCESS)
+        {
+            goto out;
+        }
+
+        /* read if present, else use default */
+        error = GetIniString(TEXT("global"), TEXT("ovpn_admin_group"), s->ovpn_admin_group,
+                             sizeof(s->ovpn_admin_group), OVPN_ADMIN_GROUP);
+        if (error != ERROR_SUCCESS)
+        {
+            goto out;
+        }
+        goto out1;
+    }
+
 
     openvpn_swprintf(reg_path, _countof(reg_path), TEXT("SOFTWARE\\" PACKAGE_NAME "%ls"), service_instance);
 
@@ -160,6 +231,8 @@ GetOpenvpnSettings(settings_t *s)
     {
         goto out;
     }
+
+out1:
     /* set process priority */
     if (!_wcsicmp(priority, TEXT("IDLE_PRIORITY_CLASS")))
     {
@@ -205,7 +278,10 @@ GetOpenvpnSettings(settings_t *s)
     }
 
 out:
+    if(!s->standalone)
+    {
     RegCloseKey(key);
+    }
     return error;
 }
 
