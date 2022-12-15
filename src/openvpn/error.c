@@ -970,9 +970,9 @@ strerror_win32(DWORD errnum, struct gc_arena *gc)
 
     /* format a windows error message */
     {
-        char message[256];
-        struct buffer out = alloc_buf_gc(256, gc);
-        const int status =  FormatMessage(
+        wchar_t message[256];
+        struct buffer out;
+        const int status =  FormatMessageW(
             FORMAT_MESSAGE_IGNORE_INSERTS
             | FORMAT_MESSAGE_FROM_SYSTEM
             | FORMAT_MESSAGE_ARGUMENT_ARRAY,
@@ -980,24 +980,29 @@ strerror_win32(DWORD errnum, struct gc_arena *gc)
             errnum,
             0,
             message,
-            sizeof(message),
+            _countof(message),
             NULL);
         if (!status)
         {
+            out = alloc_buf_gc(32, gc);
             buf_printf(&out, "[Unknown Win32 Error]");
         }
         else
         {
-            char *cp;
-            for (cp = message; *cp != '\0'; ++cp)
+            wchar_t *cp;
+            for (cp = message; *cp != TEXT('\0'); ++cp)
             {
-                if (*cp == '\n' || *cp == '\r')
+                if (*cp == TEXT('\n') || *cp == TEXT('\r'))
                 {
-                    *cp = ' ';
+                    *cp = TEXT(' ');
                 }
             }
 
-            buf_printf(&out, "%s", message);
+            int n = WideCharToMultiByte(CP_UTF8, 0, message, -1, NULL, 0, NULL, NULL);
+            char *msg = gc_malloc(n, false, gc);
+            WideCharToMultiByte(CP_UTF8, 0, message, -1, msg, n, NULL, NULL);
+            out = alloc_buf_gc(n, gc);
+            buf_printf(&out, "%s", msg);
         }
 
         return BSTR(&out);

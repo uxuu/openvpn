@@ -17,6 +17,37 @@
 
 openvpn_service_t openvpn_service[_service_max];
 
+#undef _tprintf
+#define _tprintf openvpn_tprintf
+int openvpn_tprintf (const TCHAR *fmt, ...)
+{
+    int len;
+    char *buf;
+    wchar_t *wbuf;
+    TCHAR *tbuf;
+    va_list ap;
+
+    va_start(ap, fmt);
+    len = _vsntprintf(NULL, 0, fmt, ap);
+    tbuf = alloca((len + 1) * sizeof(TCHAR));
+    len = _vsntprintf(tbuf, len + 1, fmt, ap);
+    va_end(ap);
+    tbuf[len] = TEXT('\0');
+#ifdef _UNICODE
+    wbuf = tbuf;
+#else
+    len = MultiByteToWideChar(CP_ACP, 0, tbuf, -1, NULL, 0);
+    wbuf = alloca(len * sizeof(wchar_t));
+    len = MultiByteToWideChar(CP_ACP, 0, tbuf, -1, wbuf, len);
+#endif
+    UINT consolecp = GetConsoleOutputCP();
+    len = WideCharToMultiByte(consolecp, 0, wbuf, -1, NULL, 0, NULL, NULL);
+    buf = alloca(len);
+    len = WideCharToMultiByte(consolecp, 0, wbuf, -1, buf, len, NULL, NULL);
+    puts(buf);
+    return len;
+}
+
 
 BOOL
 ReportStatusToSCMgr(SERVICE_STATUS_HANDLE service, SERVICE_STATUS *status)
