@@ -788,8 +788,8 @@ EvaluateTUNTAPAdapters(_In_ MSIHANDLE hInstall)
                 }
 #ifdef __GNUC__
 /*
- * warning: enumeration value ‘MSICONDITION_TRUE’ not handled in switch
- * warning: enumeration value ‘MSICONDITION_NONE’ not handled in switch
+ * warning: enumeration value `MSICONDITION_TRUE` not handled in switch
+ * warning: enumeration value `MSICONDITION_NONE` not handled in switch
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
