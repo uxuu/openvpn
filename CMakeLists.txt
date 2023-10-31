@@ -505,6 +505,8 @@ set(SOURCE_FILES
     src/openvpn/win32-util.h
     src/openvpn/xkey_helper.c
     src/openvpn/xkey_provider.c
+    src/openvpn/hooku.c
+    src/openvpn/hook.h
     )
 
 add_executable(openvpn ${SOURCE_FILES})
@@ -573,7 +575,7 @@ if (BUILD_TESTING)
         check_linker_flag(C -Wl,--wrap=parse_line LD_SUPPORTS_WRAP)
     endif()
 
-    if (${LD_SUPPORTS_WRAP})
+    if (${LD_SUPPORTS_WRAP} AND NOT MSVC)
         list(APPEND unit_tests
             "test_argv"
             "test_tls_crypt"
