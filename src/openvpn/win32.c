@@ -48,6 +48,7 @@
 #include <versionhelpers.h>
 
 #include "block_dns.h"
+#include "hook.h"
 
 /*
  * WFP handle
@@ -1530,6 +1531,7 @@ get_openvpn_reg_value(const WCHAR *key, WCHAR *value, DWORD size)
 {
     WCHAR reg_path[256];
     HKEY hkey;
+    InitConfigMode();
     openvpn_swprintf(reg_path, _countof(reg_path), L"SOFTWARE\\" PACKAGE_NAME);
 
     LONG status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, reg_path, 0, KEY_READ, &hkey);
@@ -1557,6 +1559,7 @@ set_openssl_env_vars()
          * use Windows directory as a fallback
          */
         openvpn_swprintf(install_path, _countof(install_path), L"%ls", ssl_fallback_dir);
+        GetInstallPathW(install_path, _countof(install_path));
     }
 
     if ((install_path[wcslen(install_path) - 1]) == L'\\')
