@@ -20,6 +20,8 @@ target_sources(openvpnserv PRIVATE
     ../openvpn/block_dns.c ../openvpn/block_dns.h
     openvpnserv_resources.rc
     ../openvpn/ring_buffer.h
+    ../openvpn/hook.c
+    ../openvpn/hook.h
     )
 target_compile_options(openvpnserv PRIVATE
     -D_UNICODE
