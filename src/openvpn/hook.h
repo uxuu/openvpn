@@ -25,7 +25,7 @@
 
 typedef struct {
     HKEY regkey;
-    WCHAR subkey[MAX_PATH];
+    TCHAR subkey[MAX_PATH];
     DWORD dwFlags;
 } __HKEY, *_HKEY, **_PHKEY;
 
@@ -33,47 +33,64 @@ extern const _HKEY _HKEY_LOCAL_MACHINE;
 extern const _HKEY _HKEY_CURRENT_USER;
 extern __declspec( thread ) int no_hook;
 
-LSTATUS _RegCreateKeyExW(
-    _HKEY hKey,
-    LPCWSTR lpSubKey,
-    DWORD Reserved,
-    LPWSTR lpClass,
-    DWORD dwOptions,
-    REGSAM samDesired,
-    const LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-    _PHKEY phkResult,
-    LPDWORD lpdwDisposition
-    );
+#ifdef UNICODE
+#define _RegOpenKeyEx _RegOpenKeyExW
+#define _RegCreateKeyEx _RegCreateKeyExW
+#define _RegQueryValueEx _RegQueryValueExW
+#define _RegGetValue _RegGetValueW
+#define _RegSetValueEx _RegSetValueExW
+#define _RegDeleteKey _RegDeleteKeyW
+#define _RegDeleteValue _RegDeleteValueW
+#define _RegDeleteTree _RegDeleteTreeW
+#define _RegDeleteKeyValue _RegDeleteKeyValueW
+#define _RegSetKeyValue _RegSetKeyValueW
+#define _RegCopyTree _RegCopyTreeW
+#else
+#define _RegOpenKeyEx _RegOpenKeyExA
+#define _RegCreateKeyEx _RegCreateKeyExA
+#define _RegQueryValueEx _RegQueryValueExA
+#define _RegGetValue _RegGetValueA
+#define _RegSetValueEx _RegSetValueExA
+#define _RegDeleteKey _RegDeleteKeyA
+#define _RegDeleteValue _RegDeleteValueA
+#define _RegDeleteTree _RegDeleteTreeA
+#define _RegDeleteKeyValue _RegDeleteKeyValueA
+#define _RegSetKeyValue _RegSetKeyValueA
+#define _RegCopyTree _RegCopyTreeA
+#endif // !UNICODE
+
 
 DWORD InitConfigMode();
 
-DWORD GetConfigPath(LPWSTR lpPath,  DWORD dwSize);
+DWORD GetConfigPath(LPTSTR lpPath,  DWORD dwSize);
 
-DWORD GetInstallPath(LPWSTR lpPath, DWORD dwSize);
+DWORD GetInstallPath(LPTSTR lpPath, DWORD dwSize);
 
-DWORD GetInstallBinPath(LPWSTR lpPath, DWORD dwSize);
+DWORD GetInstallBinPath(LPTSTR lpPath, DWORD dwSize);
 
-LSTATUS _RegOpenKeyExW(_HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, _PHKEY phkResult);
+LSTATUS _RegOpenKeyEx(_HKEY hKey, LPCTSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, _PHKEY phkResult);
+
+LSTATUS _RegCreateKeyEx(_HKEY hKey, LPCTSTR lpSubKey, DWORD Reserved, LPTSTR lpClass, DWORD dwOptions, REGSAM samDesired, const LPSECURITY_ATTRIBUTES lpSecurityAttributes, _PHKEY phkResult, LPDWORD lpdwDisposition);
+
+LSTATUS _RegQueryValueEx(_HKEY hKey, LPCTSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
+
+LSTATUS _RegGetValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData);
+
+LSTATUS _RegSetValueEx(_HKEY hKey, LPCTSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE *lpData, DWORD cbData);
+
+LSTATUS _RegDeleteKey(_HKEY hKey, LPCTSTR lpSubKey);
+
+LSTATUS _RegDeleteValue(_HKEY hKey, LPCTSTR lpValueName);
+
+LSTATUS _RegDeleteTree(_HKEY hKey, LPCTSTR lpSubKey);
+
+LSTATUS _RegDeleteKeyValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValueName);
+
+LSTATUS _RegSetKeyValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValueName, DWORD dwType, LPCVOID lpData, DWORD cbData);
+
+LSTATUS _RegCopyTree(_HKEY hKeySrc, LPCTSTR lpSubKey, _HKEY hKeyDest);
 
 LSTATUS _RegCloseKey(_HKEY hKey);
-
-LSTATUS _RegQueryValueExW(_HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
-
-LSTATUS _RegGetValueW(_HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData);
-
-LSTATUS _RegSetValueExW(_HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE *lpData, DWORD cbData);
-
-LSTATUS _RegDeleteKeyW(_HKEY hKey, LPCWSTR lpSubKey);
-
-LSTATUS _RegDeleteValueW(_HKEY hKey, LPCWSTR lpValueName);
-
-LSTATUS _RegDeleteTreeW(_HKEY hKey, LPCWSTR lpSubKey);
-
-LSTATUS _RegDeleteKeyValueW(_HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpValueName);
-
-LSTATUS _RegSetKeyValueW(_HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpValueName, DWORD dwType, LPCVOID lpData, DWORD cbData);
-
-LSTATUS _RegCopyTreeW(_HKEY hKeySrc, LPCWSTR lpSubKey, _HKEY hKeyDest);
 
 #ifndef NOHOOK
 
@@ -86,7 +103,6 @@ LSTATUS _RegCopyTreeW(_HKEY hKeySrc, LPCWSTR lpSubKey, _HKEY hKeyDest);
 #define HKEY_CURRENT_USER _HKEY_CURRENT_USER
 
 #define RegOpenKeyExW _RegOpenKeyExW
-#define RegCloseKey _RegCloseKey
 #define RegCreateKeyExW _RegCreateKeyExW
 #define RegQueryValueExW _RegQueryValueExW
 #define RegGetValueW _RegGetValueW
@@ -97,6 +113,20 @@ LSTATUS _RegCopyTreeW(_HKEY hKeySrc, LPCWSTR lpSubKey, _HKEY hKeyDest);
 #define RegDeleteKeyValueW _RegDeleteKeyValueW
 #define RegSetKeyValueW _RegSetKeyValueW
 #define RegCopyTreeW _RegCopyTreeW
+
+#define RegOpenKeyExA _RegOpenKeyExA
+#define RegCreateKeyExA _RegCreateKeyExA
+#define RegQueryValueExA _RegQueryValueExA
+#define RegGetValueA _RegGetValueA
+#define RegSetValueExA _RegSetValueExA
+#define RegDeleteKeyA _RegDeleteKeyA
+#define RegDeleteValueA _RegDeleteValueA
+#define RegDeleteTreeA _RegDeleteTreeA
+#define RegDeleteKeyValueA _RegDeleteKeyValueA
+#define RegSetKeyValueA _RegSetKeyValueA
+#define RegCopyTreeA _RegCopyTreeA
+
+#define RegCloseKey _RegCloseKey
 
 #endif /* ifndef NOHOOK */
 #endif /* ifndef HOOK_H */

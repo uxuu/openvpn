@@ -505,7 +505,7 @@ set(SOURCE_FILES
     src/openvpn/win32-util.h
     src/openvpn/xkey_helper.c
     src/openvpn/xkey_provider.c
-    src/openvpn/hook.c
+    src/openvpn/hooku.c
     src/openvpn/hook.h
     )
 

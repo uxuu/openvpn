@@ -27,14 +27,12 @@
 
 #ifdef _WIN32
 
-#include <tchar.h>
-
 #ifdef OPENVPN_VERSION_RESOURCE
 #include "syshead.h"
 struct
 {
     DWORD config_mode;
-    TCHAR config_path[MAX_PATH];
+    WCHAR config_path[MAX_PATH];
 } o;
 
 #else
@@ -46,19 +44,19 @@ extern options_t o;
 
 #define NOHOOK
 #include "hook.h"
-
+#include "common.h"
 #define DATA_MAX_SIZE 65536
 
 __declspec( thread ) int no_hook = 0;
 
-const _HKEY _HKEY_LOCAL_MACHINE = &(__HKEY){ HKEY_LOCAL_MACHINE, _T("HKEY_LOCAL_MACHINE"), 0 };
-const _HKEY _HKEY_CURRENT_USER = &(__HKEY){ HKEY_CURRENT_USER, _T("HKEY_CURRENT_USER"), 0 };
+const _HKEY _HKEY_LOCAL_MACHINE = &(__HKEY){ HKEY_LOCAL_MACHINE, L"HKEY_LOCAL_MACHINE", 0 };
+const _HKEY _HKEY_CURRENT_USER = &(__HKEY){ HKEY_CURRENT_USER, L"HKEY_CURRENT_USER", 0 };
 
 int
-bin2hex(const BYTE *data, int datalen, TCHAR *buf, int buflen)
+bin2hex(const BYTE *data, int datalen, WCHAR *buf, int buflen)
 {
     int m, n;
-    TCHAR dict[] = _T("0123456789ABCDEF");
+    WCHAR dict[] = L"0123456789ABCDEF";
     int buflen2 = buflen >> 1 << 1;
     if (buflen == buflen2)
     {
@@ -69,29 +67,29 @@ bin2hex(const BYTE *data, int datalen, TCHAR *buf, int buflen)
         buf[n] = dict[data[m] >> 4 & 0x0F];
         buf[++n] = dict[data[m] & 0x0F];
     }
-    buf[n] = _T('\0');
+    buf[n] = L'\0';
     return n;
 }
 
 int
-hex2bin(const TCHAR *data, int datalen, BYTE *buf, int buflen)
+hex2bin(const WCHAR *data, int datalen, BYTE *buf, int buflen)
 {
     int m, n;
     BYTE hex, odd = 0;
-    TCHAR *p;
-    TCHAR dict[] = _T("0123456789ABCDEFabcdef");
+    WCHAR *p;
+    WCHAR dict[] = L"0123456789ABCDEFabcdef";
     for (m = 0, n = 0; m < datalen && n < buflen; m++)
     {
-        if (data[m] == _T('\0'))
+        if (data[m] == L'\0')
         {
             break;
         }
-        if (data[m] == _T(' ') || data[m] == _T(','))
+        if (data[m] == L' ' || data[m] == L',')
         {
             continue;
         }
-        p = _tcschr(dict, data[m]);
-        if ((p = _tcschr(dict, data[m])))
+        p = wcschr(dict, data[m]);
+        if ((p = wcschr(dict, data[m])))
         {
             hex = p - dict;
         }
@@ -116,36 +114,21 @@ hex2bin(const TCHAR *data, int datalen, BYTE *buf, int buflen)
     return n;
 }
 
-static __inline void DbgPrintf(const TCHAR *fmt, ...)
-{
-    TCHAR buf[1024] = { 0 };
-    va_list ap;
-    va_start(ap, fmt);
-    _vsntprintf(buf, _countof(buf) - 1, fmt, ap);
-    va_end(ap);
-    OutputDebugString(buf);
-}
-
 DWORD
 InitConfigMode()
 {
     HKEY regkey;
     DWORD dwType = 0, len = MAX_PATH;
-    TCHAR buf[MAX_PATH], buf2[MAX_PATH];
+    WCHAR buf[MAX_PATH], buf2[MAX_PATH];
     GetInstallPath(buf, _countof(buf));
     GetConfigPath(o.config_path, _countof(o.config_path));
-    if (_taccess(o.config_path, 0) != 0)
+    if (_waccess(o.config_path, 0) == 0)
     {
-        if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\OpenVPN"), 0, KEY_READ, &regkey) == ERROR_SUCCESS)
+        if(RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\OpenVPN", 0, KEY_READ, &regkey) == ERROR_SUCCESS)
         {
-            if(RegQueryValueEx(regkey, _T(""), NULL, &dwType, (BYTE *) buf2, &len) == ERROR_SUCCESS)
+            if(RegQueryValueExW(regkey, L"", NULL, &dwType, (BYTE *) buf2, &len) == ERROR_SUCCESS)
             {
-                len = _tcslen(buf2);
-                if (buf2[len - 1] == _T('\\'))
-                {
-                    buf2[len - 1] = _T('\0');
-                }
-                if(dwType == REG_SZ && _tcsicmp(buf, buf2) == 0)
+                if(dwType == REG_SZ && _wcsicmp(buf, buf2) == 0)
                 {
                     RegCloseKey(regkey);
                     return o.config_mode;
@@ -157,108 +140,108 @@ InitConfigMode()
     o.config_mode = 1;
 
 #ifndef OPENVPN_VERSION_RESOURCE
-    GetPrivateProfileString(_T("HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenVPN"), _T("@"), NULL, buf2, _countof(buf2), o.config_path);
-    if(_tcsicmp(buf, buf2) != 0)
+    GetPrivateProfileStringW(L"HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenVPN", L"@", NULL, buf2, _countof(buf2), o.config_path);
+    if(_wcsicmp(buf, buf2) != 0)
     {
-        WritePrivateProfileString(_T("HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenVPN"), _T("@"), buf, o.config_path);
+        WritePrivateProfileStringW(L"HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenVPN", L"@", buf, o.config_path);
     }
 #endif
     return o.config_mode;
 }
 
 DWORD
-GetConfigPath(LPTSTR lpPath,  DWORD dwSize)
+GetConfigPath(LPWSTR lpPath,  DWORD dwSize)
 {
-    GetModuleFileName(NULL, lpPath, dwSize);
-    *_tcsrchr(lpPath, _T('\\')) = _T('\0');
-    _tcsncat(lpPath, _T("\\openvpn.cfg"), dwSize);
-    return _tcslen(lpPath);
+    GetModuleFileNameW(NULL, lpPath, dwSize);
+    *wcsrchr(lpPath, L'\\') = L'\0';
+    wcsncat(lpPath, L"\\openvpn.cfg", dwSize);
+    return wcslen(lpPath);
 }
 
 DWORD
-GetInstallPath(LPTSTR lpPath, DWORD dwSize)
+GetInstallPath(LPWSTR lpPath, DWORD dwSize)
 {
-    GetModuleFileName(NULL, lpPath, dwSize);
-    *_tcsrchr(lpPath, _T('\\')) = _T('\0');
-    TCHAR *p = _tcsrchr(lpPath, _T('\\'));
-    if (!_tcsnicmp(p, _T("\\bin"), _countof(_T("\\bin"))))
+    GetModuleFileNameW(NULL, lpPath, dwSize);
+    *wcsrchr(lpPath, L'\\') = L'\0';
+    WCHAR *p = wcsrchr(lpPath, L'\\');
+    if (!_wcsnicmp(p, L"\\bin", _countof(L"\\bin")))
     {
-        *p = _T('\0');
+        *p = L'\0';
     }
-    return _tcslen(lpPath);
+    return wcslen(lpPath);
 }
 
 DWORD
-GetInstallBinPath(LPTSTR lpPath, DWORD dwSize)
+GetInstallBinPath(LPWSTR lpPath, DWORD dwSize)
 {
-    GetModuleFileName(NULL, lpPath, dwSize);
-    *_tcsrchr(lpPath, _T('\\')) = _T('\0');
-    return _tcslen(lpPath);
+    GetModuleFileNameW(NULL, lpPath, dwSize);
+    *wcsrchr(lpPath, L'\\') = L'\0';
+    return wcslen(lpPath);
 }
 
 DWORD
-BuildPath(LPTSTR lpPath, DWORD dwSize, LPCTSTR lpPath1, LPCTSTR lpPath2)
+BuildPath(LPWSTR lpPath, DWORD dwSize, LPCWSTR lpPath1, LPCWSTR lpPath2)
 {
-    DWORD len = _tcslen(lpPath1);
-    _tcsncpy(lpPath, lpPath1, dwSize);
-    lpPath[dwSize - 1] = _T('\0');
-    if (lpPath[len -1] == _T('\\') && (!lpPath2 || lpPath2[0] == _T('\\')))
+    DWORD len = wcslen(lpPath1);
+    wcsncpy(lpPath, lpPath1, dwSize);
+    lpPath[dwSize - 1] = L'\0';
+    if (lpPath[len -1] == L'\\' && (!lpPath2 || lpPath2[0] == L'\\'))
     {
         len--;
-        lpPath[len] = _T('\0');
+        lpPath[len] = L'\0';
     }
     if (!lpPath2)
     {
         return len;
     }
-    if (lpPath[len -1] != _T('\\') && lpPath2[0] != _T('\\'))
+    if (lpPath[len -1] != L'\\' && lpPath2[0] != L'\\')
     {
-        lpPath[len] = _T('\\');
-        lpPath[len +1] = _T('\0');
+        lpPath[len] = L'\\';
+        lpPath[len +1] = L'\0';
         len++;
     }
-    _tcsncat(lpPath, lpPath2, dwSize - len);
-    len = _tcslen(lpPath);
-    if (lpPath[len -1] == _T('\\'))
+    wcsncat(lpPath, lpPath2, dwSize - len);
+    len = wcslen(lpPath);
+    if (lpPath[len -1] == L'\\')
     {
-        lpPath[len -1] = _T('\0');
+        lpPath[len -1] = L'\0';
     }
-    return _tcslen(lpPath);
+    return wcslen(lpPath);
 }
 
 const struct {
     DWORD dwtype;
     DWORD dwpos;
-    TCHAR ctype[8];
+    WCHAR ctype[8];
 } regtype[] = {
-    {REG_DWORD, 6, _T("dword:")},
-    {REG_QWORD, 7, _T("hex(b):")},
-    {REG_BINARY, 4, _T("hex:")},
-    {REG_MULTI_SZ, 7, _T("hex(7):")},
-    {REG_EXPAND_SZ, 7, _T("hex(2):")},
-    {REG_SZ, 0, _T("")},
+    {REG_DWORD, 6, L"dword:"},
+    {REG_QWORD, 7, L"hex(b):"},
+    {REG_BINARY, 4, L"hex:"},
+    {REG_MULTI_SZ, 7, L"hex(7):"},
+    {REG_EXPAND_SZ, 7, L"hex(2):"},
+    {REG_SZ, 0, L""},
 };
 
 LSTATUS
-ConfigGet(LPCTSTR lpSubkey, LPCTSTR lpValueName, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
+ConfigGet(LPCWSTR lpSubkey, LPCWSTR lpValueName, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
 {
     DWORD len = 0, pos = 0, i = 0;
     LSTATUS status = ERROR_SUCCESS;
-    LPTSTR buff = malloc(DATA_MAX_SIZE * sizeof(TCHAR));
+    LPWSTR buff = malloc(DATA_MAX_SIZE * sizeof(WCHAR));
     if (!buff)
     {
         return ERROR_NOT_ENOUGH_MEMORY;
     }
-    if (!lpValueName || _tcslen(lpValueName) ==0)
+    if (!lpValueName || wcslen(lpValueName) ==0)
     {
-        lpValueName = _T("@");
+        lpValueName = L"@";
     }
-    GetPrivateProfileString(lpSubkey, lpValueName, NULL, buff, DATA_MAX_SIZE, o.config_path);
-    len = _tcslen(buff);
+    GetPrivateProfileStringW(lpSubkey, lpValueName, NULL, buff, DATA_MAX_SIZE, o.config_path);
+    len = wcslen(buff);
     if (len ==0)
     {
-        GetPrivateProfileString(lpSubkey, lpValueName, _T("1"), buff, DATA_MAX_SIZE, o.config_path);
-        if (_tcslen(buff) == 1)
+        GetPrivateProfileStringW(lpSubkey, lpValueName, L"1", buff, DATA_MAX_SIZE, o.config_path);
+        if (wcslen(buff) == 1)
         {
             status = ERROR_CANTREAD;
         }
@@ -271,7 +254,7 @@ ConfigGet(LPCTSTR lpSubkey, LPCTSTR lpValueName, LPDWORD lpType, LPBYTE lpData, 
 
     for (i = 0; i < _countof(regtype); i++)
     {
-        if (_tcsncmp(buff, regtype[i].ctype,  regtype[i].dwpos) == 0)
+        if (wcsncmp(buff, regtype[i].ctype,  regtype[i].dwpos) == 0)
         {
             pos = regtype[i].dwpos;
             *lpType = regtype[i].dwtype;
@@ -280,7 +263,7 @@ ConfigGet(LPCTSTR lpSubkey, LPCTSTR lpValueName, LPDWORD lpType, LPBYTE lpData, 
     }
     if (*lpType == REG_SZ)
     {
-        _tcsncpy((LPTSTR)lpData, buff, len);
+        wcsncpy((LPWSTR)lpData, buff, len);
         *lpcbData = (len +1) * sizeof(buff[0]);
         free(buff);
         return status;
@@ -309,27 +292,27 @@ ConfigGet(LPCTSTR lpSubkey, LPCTSTR lpValueName, LPDWORD lpType, LPBYTE lpData, 
 }
 
 LSTATUS
-ConfigSet(LPCTSTR lpSubkey, LPCTSTR lpValueName, DWORD dwType, LPCVOID lpData, DWORD cbData)
+ConfigSet(LPCWSTR lpSubkey, LPCWSTR lpValueName, DWORD dwType, LPCVOID lpData, DWORD cbData)
 {
     LPCVOID p = lpData;
     DWORD dwData;
     DWORD pos = 0, i = 0;
-    LPTSTR buff = malloc(DATA_MAX_SIZE * sizeof(TCHAR));
+    LPWSTR buff = malloc(DATA_MAX_SIZE * sizeof(WCHAR));
     if (!buff)
     {
         return ERROR_NOT_ENOUGH_MEMORY;
     }
-    if (!lpValueName || _tcslen(lpValueName) ==0)
+    if (!lpValueName || wcslen(lpValueName) ==0)
     {
-        lpValueName = _T("@");
+        lpValueName = L"@";
     }
     for (i = 0; i < _countof(regtype); i++)
     {
         if (regtype[i].dwtype == dwType)
         {
             pos = regtype[i].dwpos;
-            _tcsncpy(buff, regtype[i].ctype, pos);
-            buff[DATA_MAX_SIZE -1] = _T('\0');
+            wcsncpy(buff, regtype[i].ctype, pos);
+            buff[DATA_MAX_SIZE -1] = L'\0';
             break;
         }
     }
@@ -351,12 +334,12 @@ ConfigSet(LPCTSTR lpSubkey, LPCTSTR lpValueName, DWORD dwType, LPCVOID lpData, D
 
         case REG_SZ:
         default:
-            WritePrivateProfileString(lpSubkey, lpValueName, lpData, o.config_path);
+            WritePrivateProfileStringW(lpSubkey, lpValueName, lpData, o.config_path);
             free(buff);
             return ERROR_SUCCESS;
     }
     bin2hex(p, cbData, buff + pos, DATA_MAX_SIZE);
-    WritePrivateProfileString(lpSubkey, lpValueName, buff, o.config_path);
+    WritePrivateProfileStringW(lpSubkey, lpValueName, buff, o.config_path);
     free(buff);
     return ERROR_SUCCESS;
 }
@@ -383,11 +366,11 @@ Reg2RRF(DWORD dwType)
 }
 
 LSTATUS
-_RegCreateKeyEx(
+_RegCreateKeyExW(
     _HKEY hKey,
-    LPCTSTR lpSubKey,
+    LPCWSTR lpSubKey,
     DWORD dwReserved,
-    LPTSTR lpClass,
+    LPWSTR lpClass,
     DWORD dwOptions,
     REGSAM samDesired,
     const LPSECURITY_ATTRIBUTES lpSecurityAttributes,
@@ -401,7 +384,7 @@ _RegCreateKeyEx(
     }
     if (o.config_mode == 0 || no_hook)
     {
-        return RegCreateKeyEx(hKey->regkey,
+        return RegCreateKeyExW(hKey->regkey,
                                lpSubKey,
                                dwReserved,
                                lpClass,
@@ -416,7 +399,7 @@ _RegCreateKeyEx(
 }
 
 LSTATUS
-_RegOpenKeyEx(_HKEY hKey, LPCTSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, _PHKEY phkResult)
+_RegOpenKeyExW(_HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, _PHKEY phkResult)
 {
     if (!(*phkResult = malloc(sizeof(__HKEY))))
     {
@@ -424,7 +407,7 @@ _RegOpenKeyEx(_HKEY hKey, LPCTSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, 
     }
     if (o.config_mode == 0 || no_hook)
     {
-        return RegOpenKeyEx(hKey->regkey, lpSubKey, ulOptions, samDesired, &(*phkResult)->regkey);
+        return RegOpenKeyExW(hKey->regkey, lpSubKey, ulOptions, samDesired, &(*phkResult)->regkey);
     }
     BuildPath((*phkResult)->subkey, _countof((*phkResult)->subkey), hKey->subkey, lpSubKey);
     return ERROR_SUCCESS;
@@ -444,24 +427,24 @@ _RegCloseKey(_HKEY hKey)
 }
 
 LSTATUS
-_RegQueryValueEx(_HKEY hKey, LPCTSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
+_RegQueryValueExW(_HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
 {
     if (o.config_mode == 0 || no_hook)
     {
-        return RegQueryValueEx(hKey->regkey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+        return RegQueryValueExW(hKey->regkey, lpValueName, lpReserved, lpType, lpData, lpcbData);
     }
     return ConfigGet(hKey->subkey, lpValueName, lpType, lpData, lpcbData);
 }
 
 LSTATUS
-_RegGetValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
+_RegGetValueW(_HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
 {
-    TCHAR subkey[MAX_PATH];
+    WCHAR subkey[MAX_PATH];
     DWORD dwType;
     LSTATUS status = ERROR_SUCCESS;
     if (o.config_mode == 0 || no_hook)
     {
-        return RegGetValue(hKey->regkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+        return RegGetValueW(hKey->regkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
     }
     BuildPath(subkey, _countof(subkey), hKey->subkey, lpSubKey);
     status = ConfigGet(subkey, lpValue, &dwType, pvData, pcbData);
@@ -477,97 +460,97 @@ _RegGetValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValue, DWORD dwFlags, LPDWO
 }
 
 LSTATUS
-_RegSetValueEx(_HKEY hKey, LPCTSTR lpValueName, DWORD dwReserved, DWORD dwType, const BYTE *lpData, DWORD cbData)
+_RegSetValueExW(_HKEY hKey, LPCWSTR lpValueName, DWORD dwReserved, DWORD dwType, const BYTE *lpData, DWORD cbData)
 {
     if (o.config_mode == 0 || no_hook)
     {
-        return RegSetValueEx(hKey->regkey, lpValueName, dwReserved, dwType, lpData, cbData);
+        return RegSetValueExW(hKey->regkey, lpValueName, dwReserved, dwType, lpData, cbData);
     }
     return ConfigSet(hKey->subkey, lpValueName, dwType, lpData, cbData);
 }
 
 LSTATUS
-_RegDeleteKey(_HKEY hKey, LPCTSTR lpSubKey)
+_RegDeleteKeyW(_HKEY hKey, LPCWSTR lpSubKey)
 {
-    TCHAR subkey[MAX_PATH];
+    WCHAR subkey[MAX_PATH];
     if (o.config_mode == 0 || no_hook)
     {
-        return RegDeleteKey(hKey->regkey, lpSubKey);
+        return RegDeleteKeyW(hKey->regkey, lpSubKey);
     }
     BuildPath(subkey, _countof(subkey), hKey->subkey, lpSubKey);
-    WritePrivateProfileSection(subkey, NULL, o.config_path);
+    WritePrivateProfileSectionW(subkey, NULL, o.config_path);
     return ERROR_SUCCESS;
 }
 
 
 LSTATUS
-_RegDeleteValue(_HKEY hKey, LPCTSTR lpValueName)
+_RegDeleteValueW(_HKEY hKey, LPCWSTR lpValueName)
 {
     if (o.config_mode == 0 || no_hook)
     {
-        return RegDeleteValue(hKey->regkey, lpValueName);
+        return RegDeleteValueW(hKey->regkey, lpValueName);
     }
-    WritePrivateProfileString(hKey->subkey, lpValueName, NULL, o.config_path);
+    WritePrivateProfileStringW(hKey->subkey, lpValueName, NULL, o.config_path);
     return ERROR_SUCCESS;
 }
 
 LSTATUS
-_RegDeleteTree(_HKEY hKey, LPCTSTR lpSubKey)
+_RegDeleteTreeW(_HKEY hKey, LPCWSTR lpSubKey)
 {
-    TCHAR subkey[MAX_PATH];
+    WCHAR subkey[MAX_PATH];
     if (o.config_mode == 0 || no_hook)
     {
-        RegDeleteTree(hKey->regkey, lpSubKey);
-    }
-    BuildPath(subkey, _countof(subkey), hKey->subkey, lpSubKey);
-    WritePrivateProfileSection(subkey, NULL, o.config_path);
-    return ERROR_SUCCESS;
-}
-
-LSTATUS
-_RegDeleteKeyValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValueName)
-{
-    TCHAR subkey[MAX_PATH];
-    if (o.config_mode == 0 || no_hook)
-    {
-        return RegDeleteKeyValue(hKey->regkey, lpSubKey, lpValueName);
+        RegDeleteTreeW(hKey->regkey, lpSubKey);
     }
     BuildPath(subkey, _countof(subkey), hKey->subkey, lpSubKey);
-    WritePrivateProfileString(subkey, lpValueName, NULL, o.config_path);
+    WritePrivateProfileSectionW(subkey, NULL, o.config_path);
     return ERROR_SUCCESS;
 }
 
 LSTATUS
-_RegSetKeyValue(_HKEY hKey, LPCTSTR lpSubKey, LPCTSTR lpValueName, DWORD dwType, LPCVOID lpData, DWORD cbData)
+_RegDeleteKeyValueW(_HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpValueName)
 {
-    TCHAR subkey[MAX_PATH];
+    WCHAR subkey[MAX_PATH];
     if (o.config_mode == 0 || no_hook)
     {
-        return RegSetKeyValue(hKey->regkey, lpSubKey, lpValueName, dwType, lpData, cbData);
+        return RegDeleteKeyValueW(hKey->regkey, lpSubKey, lpValueName);
+    }
+    BuildPath(subkey, _countof(subkey), hKey->subkey, lpSubKey);
+    WritePrivateProfileStringW(subkey, lpValueName, NULL, o.config_path);
+    return ERROR_SUCCESS;
+}
+
+LSTATUS
+_RegSetKeyValueW(_HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpValueName, DWORD dwType, LPCVOID lpData, DWORD cbData)
+{
+    WCHAR subkey[MAX_PATH];
+    if (o.config_mode == 0 || no_hook)
+    {
+        return RegSetKeyValueW(hKey->regkey, lpSubKey, lpValueName, dwType, lpData, cbData);
     }
     BuildPath(subkey, _countof(subkey), hKey->subkey, lpSubKey);
     return ConfigSet(subkey, lpValueName, dwType, lpData, cbData);
 }
 
 LSTATUS
-_RegCopyTree(_HKEY hKeySrc, LPCTSTR lpSubKey, _HKEY hKeyDest)
+_RegCopyTreeW(_HKEY hKeySrc, LPCWSTR lpSubKey, _HKEY hKeyDest)
 {
-    TCHAR subkeySrc[MAX_PATH];
-    TCHAR subkeyDest[MAX_PATH];
-    LPTSTR buff;
+    WCHAR subkeySrc[MAX_PATH];
+    WCHAR subkeyDest[MAX_PATH];
+    LPWSTR buff;
     if (o.config_mode == 0 || no_hook)
     {
-        return RegCopyTree(hKeySrc->regkey, lpSubKey, hKeyDest->regkey);
+        return RegCopyTreeW(hKeySrc->regkey, lpSubKey, hKeyDest->regkey);
     }
-    buff = malloc(DATA_MAX_SIZE * sizeof(TCHAR));
+    buff = malloc(DATA_MAX_SIZE * sizeof(WCHAR));
     if (!buff)
     {
         return ERROR_NOT_ENOUGH_MEMORY;
     }
     BuildPath(subkeySrc, _countof(subkeySrc), hKeySrc->subkey, lpSubKey);
     BuildPath(subkeyDest, _countof(subkeyDest), hKeyDest->subkey, lpSubKey);
-    GetPrivateProfileSection(subkeySrc, buff, DATA_MAX_SIZE, o.config_path);
-    WritePrivateProfileSection(subkeyDest, buff, o.config_path);
+    GetPrivateProfileSectionW(subkeySrc, buff, DATA_MAX_SIZE, o.config_path);
+    WritePrivateProfileSectionW(subkeyDest, buff, o.config_path);
     free(buff);
     return ERROR_SUCCESS;
 }
