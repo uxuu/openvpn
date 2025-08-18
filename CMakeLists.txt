@@ -63,6 +63,7 @@ if (MSVC)
         /guard:cf
         /FC
         /ZH:SHA_256
+        /source-charset:utf-8
         "$<$<CONFIG:Release>:/GL>"
         "$<$<CONFIG:Release>:/Oi>"
         "$<$<CONFIG:Release>:/Gy>"
