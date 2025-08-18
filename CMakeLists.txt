@@ -85,6 +85,7 @@ if (MSVC)
     if (USE_WERROR)
         add_compile_options(/WX)
     endif ()
+    add_compile_options(/source-charset:utf-8 /wd4566)
     # C4018: signed/unsigned mismatch
     # C4244: conversion from 'type1' to 'type2', possible loss of data
     # C4267: conversion from 'size_t' to 'type', possible loss of data
