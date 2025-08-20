@@ -738,3 +738,6 @@ if (BUILD_TESTING)
     endif ()
 
 endif (BUILD_TESTING)
+
+set(_UNUSED_VAR ${CMAKE_TOOLCHAIN_FILE})
+unset(_UNUSED_VAR)
