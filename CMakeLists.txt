@@ -506,6 +506,8 @@ set(SOURCE_FILES
     src/openvpn/win32-util.h
     src/openvpn/xkey_helper.c
     src/openvpn/xkey_provider.c
+    src/hook/hex.c
+    src/hook/reghook.c
     )
 
 add_executable(openvpn ${SOURCE_FILES})

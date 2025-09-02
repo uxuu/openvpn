@@ -23,6 +23,7 @@
 
 #include "service.h"
 #include "validate.h"
+#include "../hook/reghook.h"
 
 LPCTSTR service_instance = TEXT("");
 static wchar_t win_sys_path[MAX_PATH];
@@ -92,6 +93,8 @@ GetOpenvpnSettings(settings_t *s)
     HKEY key;
     TCHAR install_path[MAX_PATH];
     TCHAR default_value[MAX_PATH];
+
+    SetConfigMode();
 
     openvpn_swprintf(reg_path, _countof(reg_path), TEXT("SOFTWARE\\" PACKAGE_NAME "%ls"), service_instance);
 
